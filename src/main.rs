@@ -7,9 +7,9 @@ use anyhow::Result;
 use clap::Parser;
 use std::net::Ipv4Addr;
 
-/// hashlure — poisoning LLMNR/NBT-NS/mDNS + captura NetNTLM (uso autorizado).
+/// l00tcast — poisoning LLMNR/NBT-NS/mDNS + captura NetNTLM (uso autorizado).
 #[derive(Parser)]
-#[command(name = "hashlure", version, about)]
+#[command(name = "l00tcast", version, about)]
 struct Cli {
     /// IPv4 do atacante entregue nas respostas (ex: seu IP na LAN).
     #[arg(short = 'I', long)]
@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     let all = !(c.llmnr || c.nbtns || c.mdns || c.http);
     let ip = c.interface_ip;
 
-    eprintln!("[*] hashlure — uso autorizado apenas. IP entregue: {ip}");
+    eprintln!("[*] l00tcast — uso autorizado apenas. IP entregue: {ip}");
     let mut tasks = Vec::new();
 
     if all || c.llmnr {

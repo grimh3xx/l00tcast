@@ -1,4 +1,4 @@
-# hashlure
+# l00tcast
 
 Poisoning de **LLMNR / NBT-NS / mDNS** e **captura de NetNTLM**, alternativa
 enxuta ao Responder, para pentest autorizado. Responde às buscas de nome da LAN
@@ -9,9 +9,9 @@ apontando para você e coleta o hash NetNTLMv1/v2 em formato **hashcat**.
 
 ## Uso
 ```sh
-sudo hashlure -I 192.168.1.50                 # todos os módulos
-sudo hashlure -I 192.168.1.50 --llmnr --http  # só LLMNR + captura HTTP
-sudo hashlure -I 192.168.1.50 -o loot.txt     # grava hashes
+sudo l00tcast -I 192.168.1.50                 # todos os módulos
+sudo l00tcast -I 192.168.1.50 --llmnr --http  # só LLMNR + captura HTTP
+sudo l00tcast -I 192.168.1.50 -o loot.txt     # grava hashes
 ```
 A linha capturada vai pro stdout pronta pro hashcat:
 ```

@@ -1,15 +1,15 @@
 [package]
-name = "hashlure"
+name = "l00tcast"
 version = "0.1.0"
 edition = "2021"
 authors = ["grimh3xx"]
 description = "Poisoning de LLMNR/NBT-NS/mDNS e captura de NetNTLM para pentest autorizado (alternativa enxuta ao Responder)."
 license = "MIT"
-repository = "https://github.com/grimh3xx/hashlure"
+repository = "https://github.com/grimh3xx/l00tcast"
 keywords = ["pentest", "responder", "llmnr", "netntlm", "mitm"]
 
 [[bin]]
-name = "hashlure"
+name = "l00tcast"
 path = "src/main.rs"
 
 [dependencies]
