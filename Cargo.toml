@@ -1,0 +1,24 @@
+[package]
+name = "hashlure"
+version = "0.1.0"
+edition = "2021"
+authors = ["grimh3xx"]
+description = "Poisoning de LLMNR/NBT-NS/mDNS e captura de NetNTLM para pentest autorizado (alternativa enxuta ao Responder)."
+license = "MIT"
+repository = "https://github.com/grimh3xx/hashlure"
+keywords = ["pentest", "responder", "llmnr", "netntlm", "mitm"]
+
+[[bin]]
+name = "hashlure"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1.42", features = ["rt-multi-thread", "net", "macros", "io-util", "sync", "time"] }
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1"
+socket2 = "0.5"
+base64 = "0.22"
+
+[profile.release]
+strip = true
+lto = true
