@@ -22,3 +22,15 @@ jobs:
         with:
           name: l00tcast-linux-x64
           path: target/release/l00tcast
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install SMB client and john
+        run: sudo apt-get update && sudo apt-get install -y smbclient john
+      - name: Build
+        run: cargo build --release
+      - name: SMB NetNTLM capture + crack e2e
+        run: ./tests/smb.sh
