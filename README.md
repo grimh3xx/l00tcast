@@ -25,6 +25,7 @@ them at you and collects the NetNTLMv1/v2 hash already in **hashcat format**.
 | `--mdns`  | answer mDNS (UDP 5353, 224.0.0.251) |
 | `--nbtns` | answer NBT-NS (UDP 137, broadcast) |
 | `--http`  | HTTP server that forces NTLM and extracts the NetNTLM hash |
+| `--smb`   | rogue SMB2 server that captures NetNTLMv2 (SPNEGO/NTLMSSP) |
 
 With no flags all are on. The server challenge is fixed to `1122334455667788`
 for offline cracking.
@@ -34,6 +35,7 @@ for offline cracking.
 ```sh
 sudo l00tcast -I 192.168.1.50                 # all modules
 sudo l00tcast -I 192.168.1.50 --llmnr --http  # LLMNR + HTTP capture only
+sudo l00tcast -I 192.168.1.50 --smb --http    # SMB + HTTP capture
 sudo l00tcast -I 192.168.1.50 -o loot.txt     # save hashes
 ```
 
@@ -53,11 +55,14 @@ cargo test --release
 - NTLM: a synthetic NTLMv2 Type-3 must parse into the exact hashcat line.
 - HTTP capture: an in-process NTLM client (Type1 -> 401 -> Type3) must have its
   hash written to the loot file.
+- SMB capture (`tests/smb.sh`): the real `smbclient` authenticates against the
+  rogue SMB2 server and the captured NetNTLMv2 is cracked back to the password
+  with `john` — verified end to end.
 
 ## Roadmap
 
-- NetNTLM capture over **SMB** (rogue server) in addition to HTTP.
 - WPAD/proxy and downgrade.
+- SMB3 dialects and signing-required targets.
 
 ## Build
 

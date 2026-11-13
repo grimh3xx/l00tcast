@@ -85,7 +85,7 @@ def build():
     s = Session()
     s.out([seg("l00tcast", "cyan", True), seg(" \u2014 authorised use only", "muted")], dur=1)
     s.blank()
-    s.type("sudo l00tcast -I 192.168.1.50 -o loot.txt")
+    s.type("sudo l00tcast -I 192.168.1.50 --smb --http -o loot.txt")
     s.enter()
     s.out([seg("[*] l00tcast \u2014 handing out IP: ", "text"), seg("192.168.1.50", "white")])
     s.out([seg("[*] LLMNR: listening on 5355 (group 224.0.0.252)", "text")])
@@ -95,6 +95,7 @@ def build():
     s.out([seg("        -> answered 192.168.1.50", "green")])
     s.out([seg("[+] ", "green", True), seg("HTTP", "cyan", True), seg(": captured ", "text"), seg("CORP\\jdoe", "white", True), seg(" from 192.168.1.23", "text")])
     s.out([seg("jdoe::CORP:1122334455667788:1f2e...:0101000000...", "amber")])
+    s.out([seg("[+] ", "green", True), seg("SMB", "cyan", True), seg(": captured ", "text"), seg("WORKLAB\\victim", "white", True), seg(" (NetNTLMv2)", "text")])
     s.cursor_hold()
     return s
 
