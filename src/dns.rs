@@ -49,7 +49,7 @@ fn question_end(buf: &[u8]) -> Option<usize> {
     }
 }
 
-/// Monta resposta A apontando o nome consultado para `ip`.
+/// Builds an A response pointing the queried name at `ip`.
 pub fn build_a_response(query: &[u8], ip: Ipv4Addr) -> Option<Vec<u8>> {
     let qend = question_end(query)?;
     let mut out = Vec::with_capacity(qend + 16);
@@ -70,4 +70,41 @@ pub fn build_a_response(query: &[u8], ip: Ipv4Addr) -> Option<Vec<u8>> {
     out.extend_from_slice(&[0x00, 0x04]); // rdlength
     out.extend_from_slice(&ip.octets());
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    // Builds a minimal DNS/LLMNR query for `name` with qtype A, qclass IN.
+    fn query_for(name: &str) -> Vec<u8> {
+        let mut q = vec![0x13, 0x37, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        for label in name.split('.') {
+            q.push(label.len() as u8);
+            q.extend_from_slice(label.as_bytes());
+        }
+        q.push(0x00);
+        q.extend_from_slice(&[0x00, 0x01, 0x00, 0x01]); // qtype A, qclass IN
+        q
+    }
+
+    #[test]
+    fn extracts_queried_name() {
+        let q = query_for("fileserver");
+        assert_eq!(question_name(&q).as_deref(), Some("fileserver"));
+    }
+
+    #[test]
+    fn response_points_name_at_our_ip() {
+        let q = query_for("wpad");
+        let ip = Ipv4Addr::new(192, 168, 1, 50);
+        let resp = build_a_response(&q, ip).expect("response built");
+        // echoes the transaction id
+        assert_eq!(&resp[0..2], &q[0..2]);
+        // QR bit set (response)
+        assert_eq!(resp[2] & 0x80, 0x80);
+        // one answer, type A, and the rdata is our IP
+        assert_eq!(&resp[resp.len() - 4..], &ip.octets());
+    }
 }

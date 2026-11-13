@@ -1,7 +1,7 @@
 //! Construção do desafio NTLMSSP (Type 2) e parsing do Type 3 para hashcat.
 use base64::{engine::general_purpose::STANDARD, Engine};
 
-/// Desafio fixo clássico — conveniente para cracking offline.
+/// Classic fixed challenge — convenient for offline cracking.
 pub const CHALLENGE: [u8; 8] = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88];
 
 /// Mensagem CHALLENGE (Type 2) base64, para o header WWW-Authenticate: NTLM.
@@ -79,4 +79,68 @@ pub fn parse_type3(b64: &str) -> Option<Captured> {
         return None;
     };
     Some(Captured { user, domain, hashcat })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+
+    fn utf16(s: &str) -> Vec<u8> {
+        s.encode_utf16().flat_map(|u| u.to_le_bytes()).collect()
+    }
+
+    /// Builds a well-formed NTLMv2 AUTHENTICATE (Type 3) message.
+    pub fn build_type3(domain: &str, user: &str, proof: &[u8], blob: &[u8]) -> Vec<u8> {
+        let dom = utf16(domain);
+        let usr = utf16(user);
+        let mut nt = proof.to_vec();
+        nt.extend_from_slice(blob);
+        let base = 64u32;
+        let mut m = Vec::new();
+        m.extend_from_slice(b"NTLMSSP\0");
+        m.extend_from_slice(&3u32.to_le_bytes());
+        let sb = |len: usize, off: u32| {
+            let l = len as u16;
+            let mut v = Vec::new();
+            v.extend_from_slice(&l.to_le_bytes());
+            v.extend_from_slice(&l.to_le_bytes());
+            v.extend_from_slice(&off.to_le_bytes());
+            v
+        };
+        m.extend_from_slice(&sb(0, base)); // LM @12
+        m.extend_from_slice(&sb(nt.len(), base + dom.len() as u32 + usr.len() as u32)); // NT @20
+        m.extend_from_slice(&sb(dom.len(), base)); // domain @28
+        m.extend_from_slice(&sb(usr.len(), base + dom.len() as u32)); // user @36
+        m.extend_from_slice(&sb(0, base)); // workstation @44
+        m.extend_from_slice(&sb(0, base)); // session key @52
+        m.extend_from_slice(&0u32.to_le_bytes()); // flags @60
+        // payload @64
+        m.extend_from_slice(&dom);
+        m.extend_from_slice(&usr);
+        m.extend_from_slice(&nt);
+        m
+    }
+
+    fn hexs(b: &[u8]) -> String {
+        b.iter().map(|x| format!("{x:02x}")).collect()
+    }
+
+    #[test]
+    fn parses_ntlmv2_into_hashcat_line() {
+        let proof = [0xAAu8; 16];
+        // NTLMv2 blob must be > 8 bytes so the NT response exceeds 24 total.
+        let blob: Vec<u8> = (0u8..28).collect();
+        let msg = build_type3("CORP", "jdoe", &proof, &blob);
+        let b64 = STANDARD.encode(&msg);
+        let cap = parse_type3(&b64).expect("parse");
+        assert_eq!(cap.user, "jdoe");
+        assert_eq!(cap.domain, "CORP");
+        let want = format!(
+            "jdoe::CORP:1122334455667788:{}:{}",
+            hexs(&proof),
+            hexs(&blob)
+        );
+        assert_eq!(cap.hashcat, want);
+    }
 }

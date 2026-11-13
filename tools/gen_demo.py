@@ -83,18 +83,18 @@ class Session:
 
 def build():
     s = Session()
-    s.out([seg("l00tcast", "cyan", True), seg(" — authorised use only", "muted")], dur=1)
+    s.out([seg("l00tcast", "cyan", True), seg(" \u2014 authorised use only", "muted")], dur=1)
     s.blank()
     s.type("sudo l00tcast -I 192.168.1.50 -o loot.txt")
     s.enter()
-    s.out([seg("[*] l00tcast — IP entregue: ", "text"), seg("192.168.1.50", "white")])
-    s.out([seg("[*] LLMNR: escutando 5355 (grupo 224.0.0.252)", "text")])
-    s.out([seg("[*] NBT-NS: escutando 137 (broadcast)", "text")])
-    s.out([seg("[*] HTTP: capturando NetNTLM em 80", "text")])
-    s.out([seg("[+] ", "green", True), seg("LLMNR", "cyan", True), seg(": 192.168.1.23 buscou ", "text"), seg("'fileserver'", "white", True)])
-    s.out([seg("        -> respondi 192.168.1.50", "green")])
-    s.out([seg("[+] ", "green", True), seg("HTTP", "cyan", True), seg(": capturado ", "text"), seg("CORP\\jdoe", "white", True), seg(" de 192.168.1.23", "text")])
-    s.out([seg("CORP/jdoe::CORP:1122334455667788:1f2e...:0101000000...", "amber")])
+    s.out([seg("[*] l00tcast \u2014 handing out IP: ", "text"), seg("192.168.1.50", "white")])
+    s.out([seg("[*] LLMNR: listening on 5355 (group 224.0.0.252)", "text")])
+    s.out([seg("[*] NBT-NS: listening on 137 (broadcast)", "text")])
+    s.out([seg("[*] HTTP: capturing NetNTLM on 80", "text")])
+    s.out([seg("[+] ", "green", True), seg("LLMNR", "cyan", True), seg(": 192.168.1.23 asked for ", "text"), seg("'fileserver'", "white", True)])
+    s.out([seg("        -> answered 192.168.1.50", "green")])
+    s.out([seg("[+] ", "green", True), seg("HTTP", "cyan", True), seg(": captured ", "text"), seg("CORP\\jdoe", "white", True), seg(" from 192.168.1.23", "text")])
+    s.out([seg("jdoe::CORP:1122334455667788:1f2e...:0101000000...", "amber")])
     s.cursor_hold()
     return s
 

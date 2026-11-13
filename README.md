@@ -1,4 +1,4 @@
-# l00tcast
+<img src="docs/banner.svg" alt="l00tcast" width="100%">
 
 [![build](https://img.shields.io/github/actions/workflow/status/grimh3xx/l00tcast/build.yml?branch=main&style=flat-square&labelColor=111826&label=build)](https://github.com/grimh3xx/l00tcast/actions)
 [![license](https://img.shields.io/github/license/grimh3xx/l00tcast?style=flat-square&labelColor=111826&color=22D3EE)](LICENSE)
@@ -7,47 +7,57 @@
 ![authorised use](https://img.shields.io/badge/authorised%20use-only-F87171?style=flat-square&labelColor=111826)
 
 
-**Poisoning de LLMNR/NBT-NS/mDNS e captura de NetNTLM em Rust**, alternativa
-enxuta ao Responder para pentest autorizado. Responde às buscas de nome da LAN
-apontando para você e coleta o hash NetNTLMv1/v2 já em **formato hashcat**.
+**LLMNR/NBT-NS/mDNS poisoning and NetNTLM capture in Rust**, a lean Responder
+alternative for authorised pentests. It answers the LAN's name lookups pointing
+them at you and collects the NetNTLMv1/v2 hash already in **hashcat format**.
 
 <p align="center"><img src="docs/demo.svg" alt="l00tcast demo" width="100%"></p>
 
-> ## ⚠️ Uso autorizado apenas
-> Poisoning de resolução de nome afeta **toda a LAN** e é intrusivo. Rode
-> **somente** em redes que você possui ou tem **permissão escrita** para testar.
-> Uso não autorizado é crime; a responsabilidade é sua.
+> ## ⚠️ Authorised use only
+> Name-resolution poisoning affects the **whole LAN** and is intrusive. Run
+> **only** on networks you own or have **written permission** to test.
 
-## Módulos
+## Modules
 
-| flag | o que faz |
+| flag | what it does |
 |---|---|
-| `--llmnr` | responde LLMNR (UDP 5355, 224.0.0.252) |
-| `--mdns`  | responde mDNS (UDP 5353, 224.0.0.251) |
-| `--nbtns` | responde NBT-NS (UDP 137, broadcast) |
-| `--http`  | servidor que força NTLM e extrai o NetNTLM |
+| `--llmnr` | answer LLMNR (UDP 5355, 224.0.0.252) |
+| `--mdns`  | answer mDNS (UDP 5353, 224.0.0.251) |
+| `--nbtns` | answer NBT-NS (UDP 137, broadcast) |
+| `--http`  | HTTP server that forces NTLM and extracts the NetNTLM hash |
 
-Sem flags, liga todos. Desafio do servidor fixo em `1122334455667788` para
-cracking offline.
+With no flags all are on. The server challenge is fixed to `1122334455667788`
+for offline cracking.
 
-## Uso
+## Usage
 
 ```sh
-sudo l00tcast -I 192.168.1.50                 # todos os módulos
-sudo l00tcast -I 192.168.1.50 --llmnr --http  # só LLMNR + captura HTTP
-sudo l00tcast -I 192.168.1.50 -o loot.txt     # grava hashes
+sudo l00tcast -I 192.168.1.50                 # all modules
+sudo l00tcast -I 192.168.1.50 --llmnr --http  # LLMNR + HTTP capture only
+sudo l00tcast -I 192.168.1.50 -o loot.txt     # save hashes
 ```
 
-A linha capturada sai pronta pro hashcat:
+Captured lines are hashcat-ready:
 
 ```sh
 hashcat -m 5600 loot.txt wordlist.txt   # NetNTLMv2
 ```
 
+## Tests
+
+```sh
+cargo test --release
+```
+
+- Poisoning: a crafted LLMNR query must be answered with the attacker IP.
+- NTLM: a synthetic NTLMv2 Type-3 must parse into the exact hashcat line.
+- HTTP capture: an in-process NTLM client (Type1 -> 401 -> Type3) must have its
+  hash written to the loot file.
+
 ## Roadmap
 
-- Captura via **SMB** (rogue server) além de HTTP.
-- WPAD/proxy e downgrade.
+- NetNTLM capture over **SMB** (rogue server) in addition to HTTP.
+- WPAD/proxy and downgrade.
 
 ## Build
 
@@ -55,6 +65,6 @@ hashcat -m 5600 loot.txt wordlist.txt   # NetNTLMv2
 cargo build --release
 ```
 
-## Licença
+## License
 
-MIT. Veja [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

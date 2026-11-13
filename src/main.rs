@@ -1,17 +1,18 @@
-mod dns;
-mod http_capture;
-mod ntlm;
-mod poison;
 
+
+
+
+
+use l00tcast::{http_capture, poison};
 use anyhow::Result;
 use clap::Parser;
 use std::net::Ipv4Addr;
 
-/// l00tcast — poisoning LLMNR/NBT-NS/mDNS + captura NetNTLM (uso autorizado).
+/// l00tcast — LLMNR/NBT-NS/mDNS poisoning + NetNTLM capture (authorised use only).
 #[derive(Parser)]
 #[command(name = "l00tcast", version, about)]
 struct Cli {
-    /// IPv4 do atacante entregue nas respostas (ex: seu IP na LAN).
+    /// Attacker IPv4 handed out in responses (e.g. your LAN IP).
     #[arg(short = 'I', long)]
     interface_ip: Ipv4Addr,
 
@@ -24,11 +25,11 @@ struct Cli {
     #[arg(long)]
     http: bool,
 
-    /// Porta do capturador HTTP.
+    /// Port of the HTTP capture listener.
     #[arg(long, default_value_t = 80)]
     http_port: u16,
 
-    /// Arquivo para gravar hashes capturados (append).
+    /// File to append captured hashes to.
     #[arg(short, long)]
     output: Option<String>,
 }
@@ -39,7 +40,7 @@ async fn main() -> Result<()> {
     let all = !(c.llmnr || c.nbtns || c.mdns || c.http);
     let ip = c.interface_ip;
 
-    eprintln!("[*] l00tcast — uso autorizado apenas. IP entregue: {ip}");
+    eprintln!("[*] l00tcast — authorised use only. Handing out IP: {ip}");
     let mut tasks = Vec::new();
 
     if all || c.llmnr {
@@ -63,7 +64,7 @@ async fn main() -> Result<()> {
 
     for t in tasks {
         if let Ok(Err(e)) = t.await {
-            eprintln!("[!] listener parou: {e}");
+            eprintln!("[!] listener stopped: {e}");
         }
     }
     Ok(())

