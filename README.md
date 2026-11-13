@@ -25,7 +25,7 @@ them at you and collects the NetNTLMv1/v2 hash already in **hashcat format**.
 | `--mdns`  | answer mDNS (UDP 5353, 224.0.0.251) |
 | `--nbtns` | answer NBT-NS (UDP 137, broadcast) |
 | `--http`  | HTTP server that forces NTLM and extracts the NetNTLM hash |
-| `--smb`   | rogue SMB2 server that captures NetNTLMv2 (SPNEGO/NTLMSSP) |
+| `--smb`   | rogue SMB2 server that captures NetNTLMv2 (SPNEGO/NTLMSSP; SMB1 clients are upgraded) |
 
 With no flags all are on. The server challenge is fixed to `1122334455667788`
 for offline cracking.
@@ -36,6 +36,7 @@ for offline cracking.
 sudo l00tcast -I 192.168.1.50                 # all modules
 sudo l00tcast -I 192.168.1.50 --llmnr --http  # LLMNR + HTTP capture only
 sudo l00tcast -I 192.168.1.50 --smb --http    # SMB + HTTP capture
+sudo l00tcast -I 192.168.1.50 --iface 10.0.0.9 # pick multicast interface (multi-homed)
 sudo l00tcast -I 192.168.1.50 -o loot.txt     # save hashes
 ```
 
@@ -62,7 +63,7 @@ cargo test --release
 ## Roadmap
 
 - WPAD/proxy and downgrade.
-- SMB3 dialects and signing-required targets.
+- SMB3 dialects and SMB signing-required targets.
 
 ## Build
 

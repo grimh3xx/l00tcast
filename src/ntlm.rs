@@ -167,6 +167,22 @@ mod tests {
     }
 
     #[test]
+    fn fuzz_parse_type3_no_panic() {
+        let mut x: u64 = 0xA5A5_5A5A_F0F0_0F0F;
+        for _ in 0..30_000 {
+            x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+            let len = (x as usize) % 500;
+            let mut buf: Vec<u8> = (0..len).map(|i| (x >> (i % 56)) as u8).collect();
+            // also exercise the valid-signature branch
+            if buf.len() >= 12 {
+                buf[0..8].copy_from_slice(b"NTLMSSP\0");
+                buf[8] = 3;
+            }
+            let _ = parse_type3_bytes(&buf);
+        }
+    }
+
+    #[test]
     fn parses_ntlmv2_into_hashcat_line() {
         let proof = [0xAAu8; 16];
         // NTLMv2 blob must be > 8 bytes so the NT response exceeds 24 total.

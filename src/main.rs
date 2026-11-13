@@ -16,6 +16,10 @@ struct Cli {
     #[arg(short = 'I', long)]
     interface_ip: Ipv4Addr,
 
+    /// Interface IPv4 to join multicast on (default: all interfaces).
+    #[arg(long)]
+    iface: Option<Ipv4Addr>,
+
     #[arg(long)]
     llmnr: bool,
     #[arg(long)]
@@ -45,18 +49,19 @@ async fn main() -> Result<()> {
     let c = Cli::parse();
     let all = !(c.llmnr || c.nbtns || c.mdns || c.http || c.smb);
     let ip = c.interface_ip;
+    let iface = c.iface.unwrap_or(Ipv4Addr::UNSPECIFIED);
 
     eprintln!("[*] l00tcast — authorised use only. Handing out IP: {ip}");
     let mut tasks = Vec::new();
 
     if all || c.llmnr {
         tasks.push(tokio::spawn(async move {
-            poison::run_dns_poison("LLMNR", 5355, Ipv4Addr::new(224, 0, 0, 252), ip).await
+            poison::run_dns_poison("LLMNR", 5355, Ipv4Addr::new(224, 0, 0, 252), ip, iface).await
         }));
     }
     if all || c.mdns {
         tasks.push(tokio::spawn(async move {
-            poison::run_dns_poison("mDNS", 5353, Ipv4Addr::new(224, 0, 0, 251), ip).await
+            poison::run_dns_poison("mDNS", 5353, Ipv4Addr::new(224, 0, 0, 251), ip, iface).await
         }));
     }
     if all || c.nbtns {

@@ -149,6 +149,17 @@ fn find_ntlmssp(buf: &[u8]) -> Option<&[u8]> {
     buf.windows(8).position(|w| w == b"NTLMSSP\0").map(|i| &buf[i..])
 }
 
+/// Extracts the SESSION_SETUP security buffer (SPNEGO/GSS token) from a message.
+/// Uses checked arithmetic so arbitrary input can never panic.
+fn extract_security_token(msg: &[u8]) -> Option<&[u8]> {
+    if msg.len() < 80 {
+        return None;
+    }
+    let off = u16::from_le_bytes([msg[76], msg[77]]) as usize;
+    let len = u16::from_le_bytes([msg[78], msg[79]]) as usize;
+    msg.get(off..off.checked_add(len)?)
+}
+
 async fn handle(mut s: TcpStream, out: Arc<Mutex<Option<String>>>, from: String) {
     let session_id: u64 = 0x1122_3344_5566_7788;
     loop {
@@ -172,13 +183,7 @@ async fn handle(mut s: TcpStream, out: Arc<Mutex<Option<String>>>, from: String)
                 let _ = write_nbt(&mut s, &negotiate_response(mid, 0x0202)).await;
             }
             CMD_SESSION_SETUP => {
-                // SecurityBufferOffset @76, Length @78 (from start of message)
-                if msg.len() < 80 {
-                    return;
-                }
-                let off = u16::from_le_bytes([msg[76], msg[77]]) as usize;
-                let len = u16::from_le_bytes([msg[78], msg[79]]) as usize;
-                let token = match msg.get(off..off + len) {
+                let token = match extract_security_token(&msg) {
                     Some(t) => t,
                     None => return,
                 };
@@ -250,6 +255,18 @@ mod tests {
         let b = spnego_init();
         assert_eq!(b[0], 0x60); // GSSAPI application tag
         assert!(b.windows(12).any(|w| w == NTLMSSP_OID)); // advertises NTLMSSP
+    }
+
+    #[test]
+    fn fuzz_token_extraction_no_panic() {
+        let mut x: u64 = 0x1234_5678_9ABC_DEF0;
+        for _ in 0..20_000 {
+            x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+            let len = (x as usize) % 400;
+            let buf: Vec<u8> = (0..len).map(|i| (x >> (i % 56)) as u8).collect();
+            let _ = extract_security_token(&buf);
+            let _ = find_ntlmssp(&buf);
+        }
     }
 
     #[test]

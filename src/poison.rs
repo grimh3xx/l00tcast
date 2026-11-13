@@ -13,10 +13,10 @@ fn bind_reuse(port: u16) -> Result<std::net::UdpSocket> {
     Ok(sock.into())
 }
 
-fn mcast_socket(port: u16, group: Ipv4Addr) -> Result<UdpSocket> {
+fn mcast_socket(port: u16, group: Ipv4Addr, iface: Ipv4Addr) -> Result<UdpSocket> {
     let std_sock = bind_reuse(port)?;
     let s2 = Socket::from(std_sock.try_clone()?);
-    s2.join_multicast_v4(&group, &Ipv4Addr::UNSPECIFIED)?;
+    s2.join_multicast_v4(&group, &iface)?;
     std_sock.set_nonblocking(true)?;
     Ok(UdpSocket::from_std(std_sock)?)
 }
@@ -29,8 +29,14 @@ fn bcast_socket(port: u16) -> Result<UdpSocket> {
 }
 
 /// LLMNR (5355 / 224.0.0.252) and mDNS (5353 / 224.0.0.251) use DNS wire format.
-pub async fn run_dns_poison(proto: &str, port: u16, group: Ipv4Addr, our_ip: Ipv4Addr) -> Result<()> {
-    let sock = mcast_socket(port, group)?;
+pub async fn run_dns_poison(
+    proto: &str,
+    port: u16,
+    group: Ipv4Addr,
+    our_ip: Ipv4Addr,
+    iface: Ipv4Addr,
+) -> Result<()> {
+    let sock = mcast_socket(port, group, iface)?;
     eprintln!("[*] {proto}: listening on {port} (group {group})");
     let mut buf = [0u8; 2048];
     loop {
